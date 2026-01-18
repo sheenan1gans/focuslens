@@ -1,7 +1,7 @@
 {
 
     "manifest_version": 3,
-    "name": "AI Study Buddy",
+    "name": "FocusLens",
     "version": "1.0",
     "description": "analyzes study behavior from browsing patterns and improves focus using data-driven gamification",
     "permissions": ["tabs", "storage"],
