@@ -1,6 +1,5 @@
 study_stats = {"Focus Time": 0, "Distraction" : 0}
 
-
 from fastapi import FastAPI
 from pydantic import BaseModel, EmailStr, Field
 from passlib.hash import bcrypt
