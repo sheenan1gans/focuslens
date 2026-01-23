@@ -3,19 +3,11 @@ study_stats = {"Focus Time": 0, "Distraction" : 0}
 
 from fastapi import FastAPI
 from pydantic import BaseModel, EmailStr, Field
-from passlib.hash import bcrypt
-from sqlalchemy import create_engine, Column, Integer, String 
-from sqlalchemy.ext.declarative import declarative_base 
-from sqlalchemy.orm import sessionmaker 
+from passlib.hash import bcrypt 
 
 app = FastAPI()
 
 from fastapi.middleware.cors import CORSMiddleware
-
-DATABASE_URL = "sqlite:///./study_tracker.db"
-engine = create_engine(DATABASE_URL, connect_args = {"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush = False, bind=engine)
-Base = declarative_base()
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,14 +15,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-class StudyLog(Base):
-    __tablename__ = "study_logs"
-    id = Column(Integer, primary_key = True, index = True)
-    url = Column(String)
-    category = Column(String) 
-
-Base.metadata.create_all(bind=engine)
 
 class TrackData(BaseModel):
     url:str
@@ -46,7 +30,6 @@ study_stats = {"Study": 0, "Distraction": 0}
 def track_activity(data: TrackData):
     print(f"Recieved URL from Extension: {data.url}")
     url = data.url.lower()
-    db = SessionLocal()
 
     is_study = any(site in url for site in study_sites)
 
@@ -61,12 +44,6 @@ def track_activity(data: TrackData):
     print(f"{category} : {url}")
     print(f"Current Stats: {study_stats}")
 
-    new_log = StudyLog (url= data.url, category=category)
-    db.add(new_log)
-    db.commit()
-    db.refresh(new_log)
-    db.close()
-
     return {
         "status": "success", 
         "category": category, 
@@ -74,12 +51,15 @@ def track_activity(data: TrackData):
         "current_total": study_stats
     }
 
+
+
 class UserSignUp(BaseModel):
     username : str = Field(... , min_length=5, max_length= 15)
     email: EmailStr
     age : int = Field(gt = 0, lt=110)
     password : str = Field(..., min_length= 8)
     
+
 class UserOut(BaseModel):
     username: str
     email: EmailStr
