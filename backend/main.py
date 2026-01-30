@@ -39,7 +39,6 @@ def home():
     return {"message": "Server running"}
 
 study_sites = ["stackoverflow.com", "github.com", "coursera.org", "docs.python.org"]
-study_stats = {"Study": 0, "Distraction": 0}
     
 @app.post("/track")
 def track_activity(data: TrackData):
@@ -50,7 +49,7 @@ def track_activity(data: TrackData):
     is_study = any(site in url for site in study_sites)
 
     if is_study:
-        category= "Study"
+        category= "Focus Time"
         message= "Keep it up!" 
     else:
         category= "Distraction" 
