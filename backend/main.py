@@ -17,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 class TrackData(BaseModel):
     url:str
     time_spent : int
@@ -27,17 +26,12 @@ class TrackData(BaseModel):
 def home():
     return {"message": "Server running"}
     
-@app.post("/track")
-def track_activity(data: TrackData):
-    print(f"Recieved URL from Extension: {data.url}")
-    db = SessionLocal()
-
-study_sites = ["stackoverflow.com", "github.com", "coursera.org", "docs.python.org"]
-
-is_study = any(site in data.url for site in study_sites)
-
 def classify_url(url:str):
-       url = data.url.lower()
+       url = url.lower()
+
+       study_sites = ["stackoverflow.com", "github.com", "coursera.org", "docs.python.org"]
+       is_study = any(site in url for site in study_sites)
+
        if is_study:
         category= "Focus Time"
         message= "Keep it up!" 
@@ -45,23 +39,30 @@ def classify_url(url:str):
         category= "Distraction" 
         message= "Get back to work!"
 
-        return{
+@app.post("/track")
+def track_activity(data: TrackData):
+    print(f"Recieved URL from Extension: {data.url}")
+    db = SessionLocal()
+
+    category, message = classify_url(data.url)
+    
+    study_stats[category] += 1
+    print(f"{category} : {url}")
+    print(f"Current Stats: {study_stats}")
+
+    new_log = StudyLog (url= data.url, category=category)
+    db.add(new_log)
+    db.commit()
+    db.refresh(new_log)
+    db.close()
+
+    return{
         "status": "success", 
         "category": category, 
         "message": message,
         "current_total": study_stats
     }
-
-study_stats[category] += 1
-print(f"{category} : {url}")
-print(f"Current Stats: {study_stats}")
-
-new_log = StudyLog (url= data.url, category=category)
-db.add(new_log)
-db.commit()
-db.refresh(new_log)
-db.close()
-
+       
 
 class UserSignUp(BaseModel):
     username : str = Field(... , min_length=5, max_length= 15)
