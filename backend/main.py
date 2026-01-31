@@ -3,18 +3,11 @@ study_stats = {"Focus Time": 0, "Distraction" : 0}
 from fastapi import FastAPI
 from pydantic import BaseModel, EmailStr, Field
 from passlib.hash import bcrypt
-from sqlalchemy import create_engine, Column, Integer, String 
-from sqlalchemy.ext.declarative import declarative_base 
-from sqlalchemy.orm import sessionmaker 
+from database.database import engine, SessionLocal
 
 app = FastAPI()
 
 from fastapi.middleware.cors import CORSMiddleware
-
-DATABASE_URL = "sqlite:///./study_tracker.db"
-engine = create_engine(DATABASE_URL, connect_args = {"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush = False, bind=engine)
-Base = declarative_base()
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,54 +16,51 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class StudyLog(Base):
-    __tablename__ = "study_logs"
-    id = Column(Integer, primary_key = True, index = True)
-    url = Column(String)
-    category = Column(String) 
-
-Base.metadata.create_all(bind=engine)
 
 class TrackData(BaseModel):
     url:str
+    time_spent : int
+    subject: str
 
 @app.get("/")
 def home():
     return {"message": "Server running"}
-
-study_sites = ["stackoverflow.com", "github.com", "coursera.org", "docs.python.org"]
     
 @app.post("/track")
 def track_activity(data: TrackData):
     print(f"Recieved URL from Extension: {data.url}")
-    url = data.url.lower()
     db = SessionLocal()
 
-    is_study = any(site in url for site in study_sites)
+study_sites = ["stackoverflow.com", "github.com", "coursera.org", "docs.python.org"]
 
-    if is_study:
+is_study = any(site in data.url for site in study_sites)
+
+def classify_url(url:str):
+       url = data.url.lower()
+       if is_study:
         category= "Focus Time"
         message= "Keep it up!" 
-    else:
+       else:
         category= "Distraction" 
         message= "Get back to work!"
-    
-    study_stats[category] += 1
-    print(f"{category} : {url}")
-    print(f"Current Stats: {study_stats}")
 
-    new_log = StudyLog (url= data.url, category=category)
-    db.add(new_log)
-    db.commit()
-    db.refresh(new_log)
-    db.close()
-
-    return {
+        return{
         "status": "success", 
         "category": category, 
         "message": message,
         "current_total": study_stats
     }
+
+study_stats[category] += 1
+print(f"{category} : {url}")
+print(f"Current Stats: {study_stats}")
+
+new_log = StudyLog (url= data.url, category=category)
+db.add(new_log)
+db.commit()
+db.refresh(new_log)
+db.close()
+
 
 class UserSignUp(BaseModel):
     username : str = Field(... , min_length=5, max_length= 15)
