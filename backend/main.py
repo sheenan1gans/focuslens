@@ -4,10 +4,10 @@ from fastapi import FastAPI
 from pydantic import BaseModel, EmailStr, Field
 from passlib.hash import bcrypt
 from database.database import engine, SessionLocal, Base
-from database.models import StudyLog
+from database.models import StudyLog, User
 
 app = FastAPI()
-
+db = SessionLocal()
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
@@ -39,6 +39,10 @@ def classify_url(url:str):
         category= "Distraction" 
         message= "Get back to work!"
 
+class TrackData(BaseModel):
+    url: str
+    user_id: int
+
 @app.post("/track")
 def track_activity(data: TrackData):
     print(f"Recieved URL from Extension: {data.url}")
@@ -50,7 +54,7 @@ def track_activity(data: TrackData):
     print(f"{category} : {url}")
     print(f"Current Stats: {study_stats}")
 
-    new_log = StudyLog (url= data.url, category=category)
+    new_log = StudyLog (user_id=data.user_id, url= data.url, category=category)
     db.add(new_log)
     db.commit()
     db.refresh(new_log)
@@ -68,32 +72,34 @@ class UserSignUp(BaseModel):
     username : str = Field(... , min_length=5, max_length= 15)
     email: EmailStr
     age : int = Field(gt = 0, lt=110)
-    password : str = Field(..., min_length= 8)
+    password : str = Field(..., min_length= 3)
     
 class UserOut(BaseModel):
     username: str
     email: EmailStr
     age : int
 
-fake_db = []
 
 @app.post("/signup", response_model=UserOut)
 def signup(user: UserSignUp):
     h = bcrypt.hash(user.password)
 
-    new_user = {
-        "username": user.username,
-        "email": user.email,
-        "age": user.age,
-        "hashed_password": h
-    }
-
-    fake_db.append(new_user)
-
-    print(f"Database: {fake_db}")
+    new_user = User(
+        username=user.username,
+        email=user.email,
+        age=user.age,
+        password=h
+    )
     
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    db.close()
+
     return UserOut (
     username=user.username,
     email=user.email,
     age=user.age
 )
+
+Base.metadata.create_all(bind=engine)
